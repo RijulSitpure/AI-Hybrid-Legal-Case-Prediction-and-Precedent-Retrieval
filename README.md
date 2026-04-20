@@ -1,11 +1,11 @@
 # PBL: Legal Case Prediction & Precedent System
 
-A comprehensive system for predicting legal case outcomes and retrieving relevant precedents using hybrid retrieval methods (BM25 + Semantic Search). Built with a Python/Flask backend and a modern React TypeScript frontend.
+A comprehensive system for predicting legal case outcomes and retrieving relevant precedents using hybrid retrieval methods (BM25 + Semantic Search). Built with a Python/Flask backend and a modern React TypeScript frontend, now focused on fine-tuning InLegalBERT on a custom Indian Supreme Court dataset.
 
 ## 🎯 Overview
 
-This project leverages the Indian Supreme Court judgment dataset to:
-- **Predict** case outcomes (Allowed/Dismissed) using machine learning
+This project leverages a custom-built Indian Supreme Court judgment dataset to:
+- **Predict** case outcomes (Allowed/Dismissed) using fine-tuned InLegalBERT model
 - **Retrieve** relevant precedent cases using hybrid retrieval (keyword + semantic)
 - **Analyze** legal text and compare multiple retrieval methods
 - **Schedule** case reviews intelligently based on predictions
@@ -26,7 +26,7 @@ This project leverages the Indian Supreme Court judgment dataset to:
 
 ## ✨ Features
 
-- 🎯 **Case Outcome Prediction** - Random Forest model trained on 18,000+ Indian Supreme Court cases
+- 🎯 **Case Outcome Prediction** - InLegalBERT model fine-tuned on 18,000+ Indian Supreme Court cases
 - 🔍 **Hybrid Precedent Retrieval** - Combines BM25 (keyword-based) and Semantic Search (embedding-based)
 - 📊 **Comparative Analysis** - Compare different retrieval methods side-by-side
 - 📄 **Text Analysis** - Extract and analyze legal text from uploaded documents
@@ -41,16 +41,18 @@ This project leverages the Indian Supreme Court judgment dataset to:
 PBL/
 ├── backend/                          # Python/Flask API backend
 │   ├── app.py                       # Main Flask application
-│   ├── legal_prediction_system.py   # Model training script
-│   ├── siamese_lstm.py              # Siamese LSTM architecture
+│   ├── train_inlegalbert.py         # InLegalBERT fine-tuning script
+│   ├── legal_prediction_system.py   # Random Forest model (fallback)
 │   ├── contextual_retrieval.py      # Retrieval logic
 │   ├── smart_scheduler.py           # Scheduling system
-│   ├── build_indian_dataset.py      # Dataset building (with PDF extraction)
+│   ├── build_indian_dataset.py      # Custom Indian dataset building
 │   ├── build_faiss_index.py         # FAISS index construction
+│   ├── evaluate_model.py            # Model evaluation script
 │   ├── requirements.txt             # Python dependencies
-│   ├── indian_data/                 # Indian Supreme Court dataset
+│   ├── indian_data/                 # Custom Indian Supreme Court dataset
 │   │   ├── train.jsonl
-│   │   └── test.jsonl
+│   │   ├── test.jsonl
+│   │   └── pdfs/                    # Extracted PDF judgments
 │   └── models/                      # Trained models directory
 ├── frontend/                         # React TypeScript frontend
 │   ├── src/
@@ -66,6 +68,7 @@ PBL/
 ├── models/                           # Trained model files
 │   ├── faiss_index/                # FAISS semantic search index
 │   ├── word2vec_model.model        # Word2Vec embeddings
+│   ├── inlegalbert_finetuned/      # Fine-tuned InLegalBERT model
 │   └── *.pkl                       # Pickled models
 ├── data/                             # Raw training data
 │   ├── train.jsonl
@@ -107,6 +110,9 @@ pip install -r requirements.txt
 
 **Key dependencies:**
 - Flask: Web framework
+- transformers: Hugging Face transformers for InLegalBERT
+- datasets: Hugging Face datasets library
+- torch: PyTorch for deep learning
 - pandas: Data processing
 - scikit-learn: Machine learning models
 - pdfplumber: PDF text extraction
@@ -139,8 +145,8 @@ python build_indian_dataset.py
 # Build FAISS semantic search index
 python build_faiss_index.py
 
-# Train the prediction model
-python legal_prediction_system.py
+# Train the InLegalBERT prediction model
+python train_inlegalbert.py
 ```
 
 > Note: These steps download data from S3 public bucket and may take significant time/bandwidth.
@@ -291,28 +297,29 @@ Content-Type: application/json
 
 ## 📊 Dataset
 
-The project uses the **Indian Supreme Court Judgment Dataset** from a public S3 bucket:
+The project uses a **custom-built Indian Supreme Court Judgment Dataset** created specifically for this project:
 
-- **Bucket:** `indian-supreme-court-judgments`
-- **Format:** Parquet metadata + TAR archives with PDF files
+- **Source:** Indian Supreme Court judgments from public S3 bucket
+- **Format:** JSONL with extracted PDF text and metadata
 - **Coverage:** 1950-2024 decisions
 - **Cases:** 18,000+ balanced dataset (Allowed/Dismissed)
-- **Data Points:** Year, title, facts, judgment date, disposal nature
+- **Data Points:** Year, title, facts, judgment date, disposal nature, full judgment text
 
 ### Dataset Building Process
 
-1. **Metadata Extraction**: Downloads parquet files from S3 metadata store
+1. **Metadata Download**: Downloads parquet metadata files from S3 public bucket
 2. **PDF Retrieval**: Identifies and downloads relevant PDFs from yearly TAR archives
-3. **Text Extraction**: Uses `pdfplumber` to extract text from PDFs
-4. **Cleaning**: Removes HTML artifacts, OCR errors, and non-essential text
-5. **Balancing**: Creates balanced train/test split (80/20)
+3. **Text Extraction**: Uses `pdfplumber` to extract clean text from PDFs
+4. **Data Cleaning**: Removes HTML artifacts, OCR errors, and non-essential text
+5. **Balancing**: Creates balanced train/test split (80/20) with equal Allowed/Dismissed cases
+6. **Formatting**: Converts to JSONL format suitable for InLegalBERT fine-tuning
 
 ### Building Custom Dataset
 
 ```bash
 cd backend
 
-# Download and process data from S3
+# Download and process data from S3 to create custom Indian dataset
 python build_indian_dataset.py
 
 # Output: indian_data/train.jsonl and indian_data/test.jsonl
@@ -325,7 +332,8 @@ python build_indian_dataset.py
 ```
 Flask API
 ├── Legal Prediction System
-│   └── Random Forest Classifier
+│   └── InLegalBERT Classifier (primary)
+│   └── Random Forest Classifier (fallback)
 ├── Contextual Retrieval
 │   ├── BM25 Indexer
 │   └── Semantic Search (FAISS)
@@ -363,7 +371,7 @@ Frontend UI (React)
 API Request (axios)
     ↓
 Flask Backend
-    ├─→ Prediction Model → Outcome
+    ├─→ InLegalBERT Model → Outcome Prediction
     ├─→ BM25 Search → Keywords Results
     └─→ FAISS Search → Semantic Results
     ↓
