@@ -420,7 +420,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 👨‍💻 Authors
 
-- Created as part of Problem-Based Learning (PBL) project
+- Created as part of Project-Based Learning (PBL) project
 
 ## 🙏 Acknowledgments
 
